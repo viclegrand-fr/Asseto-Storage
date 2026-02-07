@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zone de Téléchargement ❄</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap">
+  <style>
+    * { box-sizing: border-box; transition: all 0.32s ease; }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #0a0a0f;
+      margin: 0;
+      color: #f0f0f5;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+    body.light { background: #f8f9fc; color: #1a1a2e; }
+    canvas#snow { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+    header {
+      position: relative;
+      padding: 50px 20px 25px;
+      background: rgba(20,20,35,0.45);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+    body.light header { background: rgba(255,255,255,0.75); border-color: rgba(0,0,0,0.08); }
+    h1 {
+      margin: 0;
+      font-size: clamp(2em, 6vw, 2.8em);
+      text-align: center;
+      animation: glow 5s ease-in-out infinite alternate;
+    }
+    @keyframes glow {
+      from { text-shadow: 0 0 8px #6dd5ed44, 0 0 16px #a17fe044; }
+      to { text-shadow: 0 0 16px #a17fe066, 0 0 32px #6dd5ed55; }
+    }
+    #param-btn { position: absolute; top: 25px; right: 25px; font-size: 1.7em; cursor: pointer; padding: 8px; border-radius: 50%; }
+    #param-btn:hover { transform: rotate(30deg) scale(1.15); background: rgba(255,255,255,0.1); }
+    .param-menu {
+      position: absolute; top: 70px; right: 20px; width: 220px; padding: 18px 22px;
+      background: rgba(30,30,50,0.75); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px; backdrop-filter: blur(12px); box-shadow: 0 10px 40px rgba(0,0,0,0.45);
+      display: none; z-index: 20;
+    }
+    .param-menu.active { display: block; }
+    .param-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 0.95em; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .param-item:last-child { border: none; }
+    .toggle { width: 50px; height: 25px; background: rgba(255,255,255,0.2); border-radius: 25px; position: relative; cursor: pointer; }
+    .toggle::after { content:""; position: absolute; width: 21px; height: 21px; top: 2px; left: 2px; background: white; border-radius: 50%; transition: left 0.3s; }
+    .toggle.active { background: #6dd5ed; }
+    .toggle.active::after { left: 27px; background: #000; }
+    nav { display: flex; justify-content: center; gap: 18px; margin: 25px 0; flex-wrap: wrap; }
+    .tab-btn {
+      padding: 12px 28px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 50px; font-weight: 600; cursor: pointer;
+    }
+    .tab-btn:hover, .tab-btn.active { background: white; color: #111; transform: scale(1.05); }
+    .controls {
+      max-width: 1100px; margin: 0 auto 30px; padding: 0 20px;
+      display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; align-items: center;
+    }
+    #searchInput {
+      flex: 1; min-width: 220px; padding: 14px 20px; border-radius: 50px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+      color: white; font-size: 1em;
+    }
+    body.light #searchInput { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.12); color: #111; }
+    .sort-btn {
+      padding: 10px 18px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 50px; cursor: pointer; font-weight: 500;
+    }
+    .sort-btn.active { background: #6dd5ed; color: #000; }
+    .tab-content { display: none; padding: 20px; animation: fadeIn 0.5s; }
+    .tab-content.active { display: block; }
+    @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+    .file-list {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 28px; max-width: 1200px; margin: 0 auto;
+    }
+    .file-item {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px; padding: 24px; backdrop-filter: blur(10px);
+    }
+    .file-item:hover { transform: translateY(-8px); box-shadow: 0 16px 40px rgba(0,0,0,0.4); }
+    .file-name { font-weight: 600; font-size: 1.15em; display: flex; align-items: center; gap: 10px; }
+    .file-info { color: rgba(255,255,255,0.55); font-size: 0.9em; margin: 6px 0 14px; }
+    body.light .file-info { color: rgba(0,0,0,0.6); }
+    a.download {
+      display: block; text-align: center; padding: 12px; border-radius: 50px;
+      background: rgba(255,255,255,0.09); color: white; text-decoration: none; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.16); cursor: pointer;
+    }
+    a.download:hover { background: linear-gradient(135deg, #6dd5ed, #a17fe0); color: #000; }
+    a.download.preparing,
+    a.download.downloading { background: #444; color: #aaa; pointer-events: none; }
+    footer { text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.45); font-size: 0.9em; }
+    body.light footer { color: rgba(0,0,0,0.5); }
+  </style>
+</head>
+<body>
+  <canvas id="snow"></canvas>
+
+  <header>
+    <h1>Asseto Storage</h1>
+    <div id="param-btn" onclick="toggleMenu()">⚙️</div>
+    <div class="param-menu" id="paramMenu">
+      <h3>Paramètres</h3>
+      <div class="param-item"><span>Snow</span><div class="toggle active" onclick="toggleSwitch(this, 'neige')"></div></div>
+      <div class="param-item"><span>Light Mode</span><div class="toggle" id="lightToggle" onclick="toggleSwitch(this, 'clair')"></div></div>
+    </div>
+  </header>
+
+  <nav role="tablist">
+    <button type="button" class="tab-btn active" onclick="openTab('content', this)" aria-selected="true">Content</button>
+    <button type="button" class="tab-btn" onclick="openTab('settings', this)" aria-selected="false">Settings</button>
+  </nav>
+
+  <div id="content" class="tab-content active">
+    <div class="controls">
+      <input type="text" id="searchInput" placeholder="Look for a file...">
+      <div>
+        <button class="sort-btn active" data-sort="name">Name</button>
+        <button class="sort-btn" data-sort="size">Size</button>
+        <button class="sort-btn" data-sort="date">Date</button>
+      </div>
+    </div>
+    <div class="file-list" id="fileList"></div>
+  </div>
+
+  <div id="settings" class="tab-content">
+    <div class="file-list">
+      <div class="file-item">
+        <div class="file-name"><span>🛠️</span>Viclegrand Settings</div>
+        <div class="file-info">1 Ko • 07-02-2026 • 0 téléchargements</div>
+        <a class="download" href="./downloads/Viclegrand Settings.zip" download="config.bat">⬇ Télécharger</a>
+      </div>
+      <div class="file-item">
+        <div class="file-name"><span>⚙️</span>launch_settings.ini</div>
+        <div class="file-info">2 Ko • 03/02/2026 • 1 204 téléchargements</div>
+        <a class="download" href="./downloads/launch_settings.ini" download="launch_settings.ini">⬇ Télécharger</a>
+      </div>
+      <div class="file-item">
+        <div class="file-name"><span>📝</span>autoexec.cfg</div>
+        <div class="file-info">6 Ko • 22/01/2026 • 962 téléchargements</div>
+        <a class="download" href="./downloads/autoexec.cfg" download="autoexec.cfg">⬇ Télécharger</a>
+      </div>
+    </div>
+  </div>
+
+  <footer>© 2026 – Zone de Téléchargement | Fait avec ❄</footer>
+
+  <script>
+    // Fichiers de la catégorie "Contenu" uniquement
+    const files = [
+      { name: "Pure 3.13 (Hotfix 3) Highres",      icon: "📦",  size: 3,  sizeUnit: "Gb", date: "07-02-2026", downloads: 0, path: "./downloads/Pure 3.13 (Hotfix 3) Highres.rar" },
+      { name: "lights-patch-v0.3.0-preview212-full",          icon: "📦",  size: 133,sizeUnit: "Mo", date: "07-02-2026", downloads: 0, path: "./downloads/lights-patch-v0.3.0-preview212-full.zip" },
+      { name: "Mvison Pack",       icon: "📦️", size: 1.1,  sizeUnit: "Gb", date: "07-02-2026", downloads: 0, path: "./downloads/Mvison Pack.zip" }
+    ];
+
+    const fileList = document.getElementById("fileList");
+
+    function renderFiles(filteredFiles = files) {
+      fileList.innerHTML = "";
+      filteredFiles.forEach(f => {
+        const item = document.createElement("div");
+        item.className = "file-item";
+        item.innerHTML = `
+          <div class="file-name"><span>${f.icon}</span>${f.name}</div>
+          <div class="file-info">${f.size} ${f.sizeUnit} • ${f.date.split('-').reverse().join('/')} • ${f.downloads.toLocaleString()} téléchargements</div>
+          <a class="download" href="${f.path}" download="${f.name}" data-filename="${f.name}">
+            ⬇ Télécharger
+          </a>
+        `;
+        fileList.appendChild(item);
+      });
+
+      // Gestion du clic avec délai de préparation (2 à 6 secondes)
+      document.querySelectorAll(".download").forEach(link => {
+        link.addEventListener("click", function(e) {
+          if (this.classList.contains("preparing") || this.classList.contains("downloading")) {
+            e.preventDefault();
+            return;
+          }
+
+          e.preventDefault();
+
+          const originalText = this.innerHTML;
+          this.classList.add("preparing");
+          this.innerHTML = "Préparation...";
+
+          const prepTime = Math.random() * 4000 + 2000; // 2 à 6 secondes
+
+          setTimeout(() => {
+            this.classList.remove("preparing");
+            this.classList.add("downloading");
+            this.innerHTML = "Lancement du téléchargement...";
+
+            const tempLink = document.createElement("a");
+            tempLink.href = this.href;
+            tempLink.download = this.getAttribute("download");
+            document.body.appendChild(tempLink);
+            tempLink.click();
+            document.body.removeChild(tempLink);
+
+            setTimeout(() => {
+              this.classList.remove("downloading");
+              this.innerHTML = originalText;
+            }, 1500);
+
+          }, prepTime);
+        });
+      });
+    }
+
+    // Recherche (seulement sur l'onglet Contenu)
+    document.getElementById("searchInput")?.addEventListener("input", e => {
+      const term = e.target.value.toLowerCase().trim();
+      const filtered = files.filter(f => f.name.toLowerCase().includes(term));
+      renderFiles(filtered);
+    });
+
+    // Tri (seulement sur l'onglet Contenu)
+    document.querySelectorAll(".sort-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".sort-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        const sortBy = btn.dataset.sort;
+        let sorted = [...files];
+        if (sortBy === "name") sorted.sort((a,b) => a.name.localeCompare(b.name));
+        if (sortBy === "size") sorted.sort((a,b) => b.size - a.size);
+        if (sortBy === "date") sorted.sort((a,b) => new Date(b.date) - new Date(a.date));
+        renderFiles(sorted);
+      });
+    });
+
+    function openTab(tabId, btn) {
+      document.querySelectorAll(".tab-content, .tab-btn").forEach(el => {
+        el.classList.remove("active");
+        if (el.tagName === "BUTTON") el.setAttribute("aria-selected", "false");
+      });
+      document.getElementById(tabId).classList.add("active");
+      btn.classList.add("active");
+      btn.setAttribute("aria-selected", "true");
+    }
+
+    function toggleMenu() {
+      document.getElementById("paramMenu").classList.toggle("active");
+    }
+
+    function toggleSwitch(el, feature) {
+      el.classList.toggle("active");
+      if (feature === "neige") {
+        document.getElementById("snow").style.display = el.classList.contains("active") ? "" : "none";
+      }
+      if (feature === "clair") {
+        document.body.classList.toggle("light");
+      }
+    }
+
+    if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+      document.body.classList.add("light");
+      document.getElementById("lightToggle")?.classList.add("active");
+    }
+
+    const canvas = document.getElementById("snow");
+    const ctx = canvas.getContext("2d");
+    let W, H, flakes = [];
+
+    function resizeCanvas() {
+      W = canvas.width = innerWidth;
+      H = canvas.height = innerHeight;
+      flakes = Array.from({length: 100}, () => ({
+        x: Math.random()*W, y: Math.random()*H,
+        r: Math.random()*2.5 + 0.8, d: Math.random()*1.2 + 0.5
+      }));
+    }
+
+    function drawSnow() {
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = document.body.classList.contains("light") ? "rgba(70,70,100,0.7)" : "rgba(255,255,255,0.8)";
+      ctx.beginPath();
+      flakes.forEach(f => {
+        ctx.moveTo(f.x, f.y);
+        ctx.arc(f.x, f.y, f.r, 0, Math.PI*2);
+      });
+      ctx.fill();
+      flakes.forEach(f => {
+        f.y += f.d;
+        if (f.y > H) { f.y = -10; f.x = Math.random()*W; }
+      });
+      requestAnimationFrame(drawSnow);
+    }
+
+    resizeCanvas();
+    drawSnow();
+    window.addEventListener("resize", resizeCanvas);
+
+    // Initialisation de l'onglet Contenu
+    renderFiles();
+  </script>
+</body>
+</html>
